@@ -2,23 +2,42 @@ const http = require("http");
 
 const TARGET = "https://medical-catalog.medical-catalog.workers.dev";
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+
+    req.on("data", (chunk) => {
+      chunks.push(chunk);
+    });
+
+    req.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    req.on("error", reject);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const targetUrl = new URL(req.url, TARGET);
 
     const headers = { ...req.headers };
 
-    // Make the request appear to come from the original Worker site
     headers.host = new URL(TARGET).host;
     headers.origin = TARGET;
     headers.referer = `${TARGET}/admin/login`;
+
+    const body =
+      ["GET", "HEAD"].includes(req.method)
+        ? undefined
+        : await readBody(req);
 
     const response = await fetch(targetUrl, {
       method: req.method,
       headers,
       redirect: "manual",
-      body: ["GET", "HEAD"].includes(req.method) ? undefined : req,
-      duplex: "half",
+      body,
     });
 
     res.statusCode = response.status;
@@ -37,10 +56,12 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    const body = Buffer.from(await response.arrayBuffer());
-    res.end(body);
+    const responseBody = Buffer.from(await response.arrayBuffer());
+
+    res.end(responseBody);
   } catch (error) {
     console.error(error);
+
     res.statusCode = 502;
     res.end("Proxy Error");
   }
