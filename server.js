@@ -10,7 +10,7 @@ const server = http.createServer(async (req, res) => {
       method: req.method,
       headers: req.headers,
       redirect: "manual",
-      body: ["GET", "HEAD"].includes(req.method) ? undefined : req,
+      body: ["GET", "HEAD"].includes(req.method) ? undefined : req,duplex: "half",
     });
 
     res.statusCode = response.status;
