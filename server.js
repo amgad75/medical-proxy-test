@@ -8,7 +8,10 @@ const server = http.createServer(async (req, res) => {
 
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers: req.headers,
+      headers: {
+  ...req.headers,
+  host: new URL(TARGET).host,
+},,
       redirect: "manual",
       body: ["GET", "HEAD"].includes(req.method) ? undefined : req,duplex: "half",
     });
