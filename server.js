@@ -1,8 +1,9 @@
 const http = require("http");
 
 const TARGET = "https://medical-catalog.medical-catalog.workers.dev";
-const GOOGLE_FILE = "google92c4c289d561eba5.html";
-const GOOGLE_CONTENT = `google-site-verification: ${GOOGLE_FILE}`;
+
+const GOOGLE_META =
+  '<meta name="google-site-verification" content="_gCYrZns9aCQ8pWW043FecaRMNWXU4sgtH9Veb_IQXk" />';
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -22,14 +23,6 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   try {
-    // Google Search Console verification
-    if (req.url === `/${GOOGLE_FILE}`) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.end(GOOGLE_CONTENT);
-      return;
-    }
-
     const targetUrl = new URL(req.url, TARGET);
 
     const headers = { ...req.headers };
@@ -52,8 +45,16 @@ const server = http.createServer(async (req, res) => {
 
     res.statusCode = response.status;
 
+    const contentType = response.headers.get("content-type") || "";
+
     response.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== "set-cookie") {
+      const lowerKey = key.toLowerCase();
+
+      if (
+        lowerKey !== "set-cookie" &&
+        lowerKey !== "content-length" &&
+        lowerKey !== "content-encoding"
+      ) {
         res.setHeader(key, value);
       }
     });
@@ -66,7 +67,27 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    const responseBody = Buffer.from(await response.arrayBuffer());
+    let responseBody = Buffer.from(await response.arrayBuffer());
+
+    // Add Google Search Console verification meta tag
+    // Only on the main HTML page.
+    if (
+      req.url === "/" &&
+      contentType.toLowerCase().includes("text/html")
+    ) {
+      let html = responseBody.toString("utf8");
+
+      if (!html.includes("google-site-verification")) {
+        html = html.replace(
+          /<head([^>]*)>/i,
+          `<head$1>\n${GOOGLE_META}`
+        );
+      }
+
+      responseBody = Buffer.from(html, "utf8");
+    }
+
+    res.setHeader("Content-Length", responseBody.length);
 
     res.end(responseBody);
   } catch (error) {
