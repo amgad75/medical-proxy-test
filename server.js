@@ -20,6 +20,14 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    // Google Search Console verification
+    if (req.url === "/google92c4c289d561eba5.html") {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end("google-site-verification: google92c4c289d561eba5.html");
+      return;
+    }
+
     const targetUrl = new URL(req.url, TARGET);
 
     const headers = { ...req.headers };
