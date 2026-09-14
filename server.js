@@ -46,8 +46,6 @@ const server = http.createServer(async (req, res) => {
 
     res.statusCode = response.status;
 
-    const contentType = response.headers.get("content-type") || "";
-
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
 
@@ -73,30 +71,31 @@ const server = http.createServer(async (req, res) => {
     /*
      * Google Search Console verification
      */
-    if (
-      req.url === "/" &&
-      contentType.toLowerCase().includes("text/html")
-    ) {
-      let html = responseBody.toString("utf8");
+    if (req.url === "/") {
+      const contentType = response.headers.get("content-type") || "";
 
-      if (!html.includes("google-site-verification")) {
-        html = html.replace(
-          /<head([^>]*)>/i,
-          `<head$1>\n${GOOGLE_META}`
-        );
+      if (contentType.toLowerCase().includes("text/html")) {
+        let html = responseBody.toString("utf8");
+
+        if (!html.includes("google-site-verification")) {
+          html = html.replace(
+            /<head([^>]*)>/i,
+            `<head$1>\n${GOOGLE_META}`
+          );
+        }
+
+        responseBody = Buffer.from(html, "utf8");
       }
-
-      responseBody = Buffer.from(html, "utf8");
     }
 
     /*
-     * Fix sitemap URLs so Google sees the public Render domain
-     * instead of the internal Cloudflare Worker domain.
+     * Rewrite sitemap URLs to the public Render domain.
+     *
+     * This intentionally checks only the URL path,
+     * not Content-Type, because the Worker may return
+     * an XML Content-Type that differs from what we expect.
      */
-    if (
-      req.url === "/sitemap.xml" &&
-      contentType.toLowerCase().includes("xml")
-    ) {
+    if (req.url === "/sitemap.xml") {
       let sitemap = responseBody.toString("utf8");
 
       sitemap = sitemap.replaceAll(
@@ -105,6 +104,8 @@ const server = http.createServer(async (req, res) => {
       );
 
       responseBody = Buffer.from(sitemap, "utf8");
+
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
     }
 
     res.setHeader("Content-Length", responseBody.length);
