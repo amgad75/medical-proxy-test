@@ -1,6 +1,8 @@
 const http = require("http");
 
 const TARGET = "https://medical-catalog.medical-catalog.workers.dev";
+const GOOGLE_FILE = "google92c4c289d561eba5.html";
+const GOOGLE_CONTENT = `google-site-verification: ${GOOGLE_FILE}`;
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -21,10 +23,10 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   try {
     // Google Search Console verification
-    if (req.url === "/google92c4c289d561eba5.html") {
+    if (req.url === `/${GOOGLE_FILE}`) {
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.end("google-site-verification: google92c4c289d561eba5.html");
+      res.end(GOOGLE_CONTENT);
       return;
     }
 
