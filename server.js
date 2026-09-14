@@ -1,6 +1,7 @@
 const http = require("http");
 
 const TARGET = "https://medical-catalog.medical-catalog.workers.dev";
+const PUBLIC_HOST = "binsharafaldin.onrender.com";
 
 const GOOGLE_META =
   '<meta name="google-site-verification" content="_gCYrZns9aCQ8pWW043FecaRMNWXU4sgtH9Veb_IQXk" />';
@@ -69,8 +70,9 @@ const server = http.createServer(async (req, res) => {
 
     let responseBody = Buffer.from(await response.arrayBuffer());
 
-    // Add Google Search Console verification meta tag
-    // Only on the main HTML page.
+    /*
+     * Google Search Console verification
+     */
     if (
       req.url === "/" &&
       contentType.toLowerCase().includes("text/html")
@@ -85,6 +87,24 @@ const server = http.createServer(async (req, res) => {
       }
 
       responseBody = Buffer.from(html, "utf8");
+    }
+
+    /*
+     * Fix sitemap URLs so Google sees the public Render domain
+     * instead of the internal Cloudflare Worker domain.
+     */
+    if (
+      req.url === "/sitemap.xml" &&
+      contentType.toLowerCase().includes("xml")
+    ) {
+      let sitemap = responseBody.toString("utf8");
+
+      sitemap = sitemap.replaceAll(
+        "https://medical-catalog.medical-catalog.workers.dev",
+        `https://${PUBLIC_HOST}`
+      );
+
+      responseBody = Buffer.from(sitemap, "utf8");
     }
 
     res.setHeader("Content-Length", responseBody.length);
